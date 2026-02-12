@@ -2,6 +2,9 @@ import boto3
 import json
 import psutil
 
+
+cpu_usage = psutil.cpu_percent(interval=1)
+memory_usage = psutil.virtual_memory().percent
 pricing = boto3.client("pricing", region_name="us-east-1")
 
 def get_price(region_name):
