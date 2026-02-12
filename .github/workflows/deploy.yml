@@ -22,6 +22,8 @@ jobs:
             git reset --hard
             git pull
             python3 cost_check.py
-            docker stop $(docker ps -q) || true
-            docker rm $(docker ps -aq) || true
+
+            docker stop $(docker ps -q) 2>/dev/null || true
+            docker rm $(docker ps -aq) 2>/dev/null || true
+
             docker run -d -p 80:80 -v $(pwd):/usr/share/nginx/html nginx
