@@ -1,8 +1,8 @@
 import boto3
 import json
 import psutil
+import random
 
-# AWS pricing client
 pricing = boto3.client("pricing", region_name="us-east-1")
 
 regions_map = {
@@ -25,15 +25,17 @@ def get_price(region_name):
     price_item = json.loads(response["PriceList"][0])
     terms = next(iter(price_item["terms"]["OnDemand"].values()))
     dims = next(iter(terms["priceDimensions"].values()))
-
     return float(dims["pricePerUnit"]["USD"])
+
 
 # Fetch prices
 prices = {r: get_price(loc) for r, loc in regions_map.items()}
 
-# System load
 cpu = psutil.cpu_percent(interval=1)
 memory = psutil.virtual_memory().percent
+
+# Simulated traffic
+traffic = random.randint(50, 500)
 
 current_region = "us-east-1"
 cheapest_region = min(prices, key=prices.get)
@@ -41,32 +43,34 @@ cheapest_region = min(prices, key=prices.get)
 current_price = prices[current_region]
 cheapest_price = prices[cheapest_region]
 
-# Load‑aware region decision
-if cpu > 70:
+# Load-aware region decision
+if cpu > 70 or traffic > 400:
     best_region = cheapest_region
 else:
     best_region = current_region
 
 best_price = prices[best_region]
 
-# Migration simulation
+# Migration status
 if best_region != current_region:
-    status = f"Migrating workload to {best_region}..."
+    status = f"Migrating workload to {best_region}"
 else:
     status = "Running optimally"
 
-# Auto‑scaling simulation
-instances = 1
-if cpu > 70:
+# Auto scaling simulation
+if cpu > 75 or traffic > 400:
+    instances = 4
+elif cpu > 55 or traffic > 250:
     instances = 3
-elif cpu > 40:
+elif cpu > 35:
     instances = 2
+else:
+    instances = 1
 
 # Cost prediction
 monthly_cost = current_price * 24 * 30
 yearly_cost = monthly_cost * 12
 
-# Data output
 data = {
     "current_region": current_region,
     "current_price": current_price,
@@ -75,8 +79,9 @@ data = {
     "savings": current_price - best_price,
     "cpu": cpu,
     "memory": memory,
-    "status": status,
+    "traffic": traffic,
     "instances": instances,
+    "status": status,
     "monthly_cost": monthly_cost,
     "yearly_cost": yearly_cost,
 }
