@@ -1,44 +1,78 @@
 <html>
 <head>
-<title>AWS Cost Dashboard</title>
+<title>Real AWS Cost Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta http-equiv="refresh" content="5">
 </head>
 
 <body>
 
 <h1>Real AWS Cost Dashboard</h1>
 
-<h2>💰 Pricing Info</h2>
-<p><b>Current Region:</b> us-east-1 ($0.0116/hour)</p>
-<p><b>Cheapest Region:</b> ap-south-1 ($0.0000/hour)</p>
-<p><b>Estimated Savings:</b> $0.0116/hour</p>
+<h2>Deployment Details</h2>
+<p id="region"></p>
+<p id="best"></p>
+<p id="saving"></p>
+<p id="status"></p>
 
-<h2>🖥 Server Usage</h2>
-<p>CPU Usage: 17.1%</p>
-<p>Memory Usage: 76.1%</p>
+<h2>Server Usage</h2>
+<p id="cpu"></p>
+<p id="mem"></p>
 
-<h2>Monthly Estimation</h2>
-<p>Current Monthly Cost: $8.35</p>
-<p>Optimized Monthly Cost: $0.00</p>
-<p><b>Monthly Savings:</b> $8.35</p>
-
-<h2>Region Price Comparison</h2>
-<canvas id="costChart" width="500" height="200"></canvas>
+<h2>CPU Live Graph</h2>
+<canvas id="cpuChart"></canvas>
 
 <script>
-const ctx = document.getElementById('costChart').getContext('2d');
+let cpuData = [];
 
-new Chart(ctx, {
-    type: 'bar',
+async function loadData(){
+    const res = await fetch("data.json");
+    const data = await res.json();
+
+    document.getElementById("region").innerText =
+        "Current Region: " + data.current_region +
+        " ($" + data.current_price.toFixed(5) + "/hour)";
+
+    document.getElementById("best").innerText =
+        "Best Region: " + data.best_region +
+        " ($" + data.best_price.toFixed(5) + "/hour)";
+
+    document.getElementById("saving").innerText =
+        "Savings: $" + data.savings.toFixed(5) + "/hour";
+
+    document.getElementById("status").innerText =
+        "Status: " + data.status;
+
+    document.getElementById("cpu").innerText =
+        "CPU Usage: " + data.cpu + "%";
+
+    document.getElementById("mem").innerText =
+        "Memory Usage: " + data.memory + "%";
+
+    cpuData.push(data.cpu);
+    if(cpuData.length > 20) cpuData.shift();
+
+    cpuChart.data.labels = cpuData.map((_,i)=>i);
+    cpuChart.data.datasets[0].data = cpuData;
+    cpuChart.update();
+}
+
+const ctx = document.getElementById('cpuChart').getContext('2d');
+const cpuChart = new Chart(ctx, {
+    type: 'line',
     data: {
-        labels: ['us-east-1', 'us-west-2', 'ap-south-1'],
+        labels: [],
         datasets: [{
-            label: 'Cost per Hour ($)',
-            data: [0.0116, 0.0792, 0.0],
-            backgroundColor: 'skyblue'
+            label: 'CPU %',
+            data: [],
+            borderColor: 'red',
+            fill: false
         }]
     }
 });
+
+setInterval(loadData, 3000);
+loadData();
 </script>
 
 </body>
