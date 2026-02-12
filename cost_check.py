@@ -1,67 +1,48 @@
-import random
+import boto3
+import json
 
-# Simulated region prices (change randomly to simulate market)
-regions = {
-    "us-east-1": round(random.uniform(0.09, 0.13), 2),
-    "us-west-2": round(random.uniform(0.09, 0.13), 2),
-    "ap-south-1": round(random.uniform(0.08, 0.12), 2)
+pricing = boto3.client("pricing", region_name="us-east-1")
+
+def get_price(region_name):
+    response = pricing.get_products(
+        ServiceCode="AmazonEC2",
+        Filters=[
+            {"Type": "TERM_MATCH", "Field": "instanceType", "Value": "t2.micro"},
+            {"Type": "TERM_MATCH", "Field": "location", "Value": region_name},
+            {"Type": "TERM_MATCH", "Field": "operatingSystem", "Value": "Linux"},
+        ],
+        MaxResults=1,
+    )
+
+    price_item = json.loads(response["PriceList"][0])
+    terms = next(iter(price_item["terms"]["OnDemand"].values()))
+    price_dimensions = next(iter(terms["priceDimensions"].values()))
+    return float(price_dimensions["pricePerUnit"]["USD"])
+
+regions_map = {
+    "us-east-1": "US East (N. Virginia)",
+    "us-west-2": "US West (Oregon)",
+    "ap-south-1": "Asia Pacific (Mumbai)",
 }
 
-# Simulated current deployment
+prices = {r: get_price(loc) for r, loc in regions_map.items()}
+
 current_region = "us-east-1"
+cheapest_region = min(prices, key=prices.get)
 
-cheapest_region = min(regions, key=regions.get)
-
-current_price = regions[current_region]
-cheapest_price = regions[cheapest_region]
+current_price = prices[current_region]
+cheapest_price = prices[cheapest_region]
 
 savings = current_price - cheapest_price
 
-migration_needed = cheapest_region != current_region
-
-decision = (
-    f"Migrate deployment to {cheapest_region}"
-    if migration_needed
-    else "Deployment already optimal"
-)
-
 html = f"""
-<html>
-<head>
-<title>Cloud Deployment Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-
-<h1>Multi‑Region Deployment Simulation</h1>
-
-<p><b>Current Region:</b> {current_region} (${current_price}/hour)</p>
-<p><b>Cheapest Region:</b> {cheapest_region} (${cheapest_price}/hour)</p>
-<p><b>Estimated Savings:</b> ${savings:.2f}/hour</p>
-<p><b>Deployment Decision:</b> {decision}</p>
-
-<canvas id="costChart"></canvas>
-
-<script>
-const ctx = document.getElementById('costChart').getContext('2d');
-new Chart(ctx, {{
-    type: 'bar',
-    data: {{
-        labels: {list(regions.keys())},
-        datasets: [{{
-            label: 'Cost per Hour ($)',
-            data: {list(regions.values())},
-            backgroundColor: 'skyblue'
-        }}]
-    }}
-}});
-</script>
-
-</body>
-</html>
+<h1>Real AWS Cost Dashboard</h1>
+<p>Current Region: {current_region} (${current_price}/hour)</p>
+<p>Cheapest Region: {cheapest_region} (${cheapest_price}/hour)</p>
+<p>Estimated Savings: ${savings:.4f}/hour</p>
 """
 
 with open("index.html", "w") as f:
     f.write(html)
 
-print("Deployment simulation updated.")
+print("Real AWS pricing updated.")
