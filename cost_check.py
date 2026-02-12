@@ -1,38 +1,59 @@
-# Simulated region prices
 regions = {
     "us-east-1": 0.10,
     "us-west-2": 0.12,
     "ap-south-1": 0.09
 }
 
-# Simulated current deployment region
 current_region = "us-east-1"
-
-# Find cheapest region
 cheapest_region = min(regions, key=regions.get)
 
 current_price = regions[current_region]
 cheapest_price = regions[cheapest_region]
-
 savings = current_price - cheapest_price
 
-html = "<h1>Cloud Cost-Aware Deployment</h1>"
+html = """
+<html>
+<head>
+<title>Cloud Cost Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<h1>Cloud Cost-Aware Deployment Dashboard</h1>
 
-html += "<h2>Deployment Details</h2>"
-html += f"<p><b>Current Region:</b> {current_region}</p>"
-html += f"<p><b>Current Region Cost:</b> ${current_price}/hour</p>"
+<p><b>Current Region:</b> %s ($%.2f/hour)</p>
+<p><b>Chosen Region:</b> %s ($%.2f/hour)</p>
+<p><b>Estimated Savings:</b> $%.2f/hour</p>
 
-html += f"<p><b>Chosen Region:</b> {cheapest_region}</p>"
-html += f"<p><b>Chosen Region Cost:</b> ${cheapest_price}/hour</p>"
+<canvas id="costChart" width="400" height="200"></canvas>
 
-html += f"<p><b>Estimated Savings:</b> ${savings:.2f}/hour</p>"
+<script>
+const ctx = document.getElementById('costChart').getContext('2d');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: %s,
+        datasets: [{
+            label: 'Cost per Hour ($)',
+            data: %s,
+            backgroundColor: 'skyblue'
+        }]
+    }
+});
+</script>
 
-html += "<h2>All Region Prices</h2><ul>"
-for r, cost in regions.items():
-    html += f"<li>{r}: ${cost}/hour</li>"
-html += "</ul>"
+</body>
+</html>
+""" % (
+    current_region,
+    current_price,
+    cheapest_region,
+    cheapest_price,
+    savings,
+    list(regions.keys()),
+    list(regions.values())
+)
 
 with open("index.html", "w") as f:
     f.write(html)
 
-print("Website updated with region comparison.")
+print("Dashboard updated.")
