@@ -1,11 +1,45 @@
+<html>
+<head>
+<title>AWS Cost Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
 
 <h1>Real AWS Cost Dashboard</h1>
 
 <h2>💰 Pricing Info</h2>
-<p>Current Region: us-east-1 ($0.0116/hour)</p>
-<p>Cheapest Region: ap-south-1 ($0.0/hour)</p>
-<p>Estimated Savings: $0.0116/hour</p>
+<p><b>Current Region:</b> us-east-1 ($0.0116/hour)</p>
+<p><b>Cheapest Region:</b> ap-south-1 ($0.0000/hour)</p>
+<p><b>Estimated Savings:</b> $0.0116/hour</p>
 
 <h2>🖥 Server Usage</h2>
 <p>CPU Usage: 17.1%</p>
 <p>Memory Usage: 76.1%</p>
+
+<h2>Monthly Estimation</h2>
+<p>Current Monthly Cost: $8.35</p>
+<p>Optimized Monthly Cost: $0.00</p>
+<p><b>Monthly Savings:</b> $8.35</p>
+
+<h2>Region Price Comparison</h2>
+<canvas id="costChart" width="500" height="200"></canvas>
+
+<script>
+const ctx = document.getElementById('costChart').getContext('2d');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['us-east-1', 'us-west-2', 'ap-south-1'],
+        datasets: [{
+            label: 'Cost per Hour ($)',
+            data: [0.0116, 0.0792, 0.0],
+            backgroundColor: 'skyblue'
+        }]
+    }
+});
+</script>
+
+</body>
+</html>
