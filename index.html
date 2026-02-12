@@ -3,8 +3,21 @@
 <title>Real AWS Cost Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Refresh page every 10 seconds -->
 <meta http-equiv="refresh" content="10">
+
+<style>
+body {
+    font-family: Arial;
+    margin: 40px;
+}
+canvas {
+    max-width: 800px;
+}
+h1 {
+    color: #2c3e50;
+}
+</style>
+
 </head>
 
 <body>
@@ -20,6 +33,13 @@
 <h2>Server Usage</h2>
 <p id="cpu"></p>
 <p id="mem"></p>
+
+<h2>Auto Scaling</h2>
+<p id="instances"></p>
+
+<h2>Cost Prediction</h2>
+<p id="monthly"></p>
+<p id="yearly"></p>
 
 <h2>CPU Live Graph</h2>
 <canvas id="cpuChart"></canvas>
@@ -55,7 +75,23 @@ async function loadData(){
     document.getElementById("mem").innerText =
         "Memory Usage: " + data.memory + "%";
 
-    /* CPU Graph update */
+    document.getElementById("instances").innerText =
+        "Active Instances: " + data.instances;
+
+    document.getElementById("monthly").innerText =
+        "Monthly Cost: $" + data.monthly_cost.toFixed(2);
+
+    document.getElementById("yearly").innerText =
+        "Yearly Cost: $" + data.yearly_cost.toFixed(2);
+
+    // Migration visual effect
+    if(data.status.includes("Migrating")){
+        document.body.style.backgroundColor = "#fff3cd";
+    } else {
+        document.body.style.backgroundColor = "white";
+    }
+
+    // CPU graph update
     cpuData.push(data.cpu);
     if(cpuData.length > 20) cpuData.shift();
 
@@ -63,7 +99,7 @@ async function loadData(){
     cpuChart.data.datasets[0].data = cpuData;
     cpuChart.update();
 
-    /* Memory Graph update */
+    // Memory graph update
     memData.push(data.memory);
     if(memData.length > 20) memData.shift();
 
@@ -72,7 +108,6 @@ async function loadData(){
     memChart.update();
 }
 
-/* CPU Chart */
 const cpuCtx = document.getElementById('cpuChart').getContext('2d');
 const cpuChart = new Chart(cpuCtx, {
     type: 'line',
@@ -87,7 +122,6 @@ const cpuChart = new Chart(cpuCtx, {
     }
 });
 
-/* Memory Chart */
 const memCtx = document.getElementById('memChart').getContext('2d');
 const memChart = new Chart(memCtx, {
     type: 'line',
@@ -102,7 +136,6 @@ const memChart = new Chart(memCtx, {
     }
 });
 
-/* Load data every 10 seconds */
 setInterval(loadData, 10000);
 loadData();
 </script>

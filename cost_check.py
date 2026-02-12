@@ -11,7 +11,6 @@ regions_map = {
     "ap-south-1": "Asia Pacific (Mumbai)",
 }
 
-
 def get_price(region_name):
     response = pricing.get_products(
         ServiceCode="AmazonEC2",
@@ -29,35 +28,45 @@ def get_price(region_name):
 
     return float(dims["pricePerUnit"]["USD"])
 
-
 # Fetch prices
 prices = {r: get_price(loc) for r, loc in regions_map.items()}
 
-# System usage
+# System load
 cpu = psutil.cpu_percent(interval=1)
 memory = psutil.virtual_memory().percent
 
 current_region = "us-east-1"
-
-# Cheapest region
 cheapest_region = min(prices, key=prices.get)
 
-# Load-aware decision
+current_price = prices[current_region]
+cheapest_price = prices[cheapest_region]
+
+# Load‑aware region decision
 if cpu > 70:
     best_region = cheapest_region
 else:
     best_region = current_region
 
-current_price = prices[current_region]
 best_price = prices[best_region]
 
-# Migration status
+# Migration simulation
 if best_region != current_region:
     status = f"Migrating workload to {best_region}..."
 else:
     status = "Running optimally"
 
-# Data for dashboard
+# Auto‑scaling simulation
+instances = 1
+if cpu > 70:
+    instances = 3
+elif cpu > 40:
+    instances = 2
+
+# Cost prediction
+monthly_cost = current_price * 24 * 30
+yearly_cost = monthly_cost * 12
+
+# Data output
 data = {
     "current_region": current_region,
     "current_price": current_price,
@@ -67,9 +76,11 @@ data = {
     "cpu": cpu,
     "memory": memory,
     "status": status,
+    "instances": instances,
+    "monthly_cost": monthly_cost,
+    "yearly_cost": yearly_cost,
 }
 
-# Save dashboard data
 with open("data.json", "w") as f:
     json.dump(data, f)
 
