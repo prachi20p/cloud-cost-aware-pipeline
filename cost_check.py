@@ -1,59 +1,67 @@
+import random
+
+# Simulated region prices (change randomly to simulate market)
 regions = {
-    "us-east-1": 0.10,
-    "us-west-2": 0.12,
-    "ap-south-1": 0.09
+    "us-east-1": round(random.uniform(0.09, 0.13), 2),
+    "us-west-2": round(random.uniform(0.09, 0.13), 2),
+    "ap-south-1": round(random.uniform(0.08, 0.12), 2)
 }
 
+# Simulated current deployment
 current_region = "us-east-1"
+
 cheapest_region = min(regions, key=regions.get)
 
 current_price = regions[current_region]
 cheapest_price = regions[cheapest_region]
+
 savings = current_price - cheapest_price
 
-html = """
+migration_needed = cheapest_region != current_region
+
+decision = (
+    f"Migrate deployment to {cheapest_region}"
+    if migration_needed
+    else "Deployment already optimal"
+)
+
+html = f"""
 <html>
 <head>
-<title>Cloud Cost Dashboard</title>
+<title>Cloud Deployment Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-<h1>Cloud Cost-Aware Deployment Dashboard</h1>
 
-<p><b>Current Region:</b> %s ($%.2f/hour)</p>
-<p><b>Chosen Region:</b> %s ($%.2f/hour)</p>
-<p><b>Estimated Savings:</b> $%.2f/hour</p>
+<h1>Multi‑Region Deployment Simulation</h1>
 
-<canvas id="costChart" width="400" height="200"></canvas>
+<p><b>Current Region:</b> {current_region} (${current_price}/hour)</p>
+<p><b>Cheapest Region:</b> {cheapest_region} (${cheapest_price}/hour)</p>
+<p><b>Estimated Savings:</b> ${savings:.2f}/hour</p>
+<p><b>Deployment Decision:</b> {decision}</p>
+
+<canvas id="costChart"></canvas>
 
 <script>
 const ctx = document.getElementById('costChart').getContext('2d');
-new Chart(ctx, {
+new Chart(ctx, {{
     type: 'bar',
-    data: {
-        labels: %s,
-        datasets: [{
+    data: {{
+        labels: {list(regions.keys())},
+        datasets: [{{
             label: 'Cost per Hour ($)',
-            data: %s,
+            data: {list(regions.values())},
             backgroundColor: 'skyblue'
-        }]
-    }
-});
+        }}]
+    }}
+}});
 </script>
 
 </body>
 </html>
-""" % (
-    current_region,
-    current_price,
-    cheapest_region,
-    cheapest_price,
-    savings,
-    list(regions.keys()),
-    list(regions.values())
-)
+"""
 
 with open("index.html", "w") as f:
     f.write(html)
 
-print("Dashboard updated.")
+print("Deployment simulation updated.")
