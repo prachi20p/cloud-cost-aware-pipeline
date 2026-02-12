@@ -5,14 +5,21 @@ regions = {
 }
 
 cheapest = min(regions, key=regions.get)
+highest = max(regions, key=regions.get)
 
-output = f"""
-<h1>Cloud Cost-Aware Deployment</h1>
-<p>Cheapest Region: {cheapest}</p>
-<p>Estimated Cost: ${regions[cheapest]}/hour</p>
-"""
+savings = regions[highest] - regions[cheapest]
+
+html = "<h1>Cloud Cost-Aware Deployment</h1>"
+html += "<h2>Region Price Comparison</h2><ul>"
+
+for r, cost in regions.items():
+    html += f"<li>{r}: ${cost}/hour</li>"
+
+html += "</ul>"
+html += f"<p><b>Chosen Region:</b> {cheapest}</p>"
+html += f"<p><b>Estimated Savings:</b> ${savings:.2f}/hour</p>"
 
 with open("index.html", "w") as f:
-    f.write(output)
+    f.write(html)
 
-print("Website updated with cheapest region.")
+print("Website updated with cost comparison.")
