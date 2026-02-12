@@ -19,11 +19,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/cloud-cost-aware-pipeline
+            git reset --hard
             git pull
-
-            # Run cost calculation before deployment
             python3 cost_check.py
-
             docker stop $(docker ps -q) || true
             docker rm $(docker ps -aq) || true
             docker run -d -p 80:80 -v $(pwd):/usr/share/nginx/html nginx
