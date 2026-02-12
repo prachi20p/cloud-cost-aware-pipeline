@@ -1,9 +1,8 @@
 <html>
 <head>
 <title>Real AWS Cost Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<meta http-equiv="refresh" content="10">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
@@ -26,13 +25,16 @@ h1 {
 
 <h2>Deployment Details</h2>
 <p id="region"></p>
-<p id="best"></p>
+<p id="cheapest"></p>
 <p id="saving"></p>
 <p id="status"></p>
 
 <h2>Server Usage</h2>
 <p id="cpu"></p>
 <p id="mem"></p>
+
+<h2>Traffic Simulation</h2>
+<p id="traffic"></p>
 
 <h2>Auto Scaling</h2>
 <p id="instances"></p>
@@ -59,7 +61,7 @@ async function loadData(){
         "Current Region: " + data.current_region +
         " ($" + data.current_price.toFixed(5) + "/hour)";
 
-    document.getElementById("best").innerText =
+    document.getElementById("cheapest").innerText =
         "Best Region: " + data.best_region +
         " ($" + data.best_price.toFixed(5) + "/hour)";
 
@@ -75,6 +77,9 @@ async function loadData(){
     document.getElementById("mem").innerText =
         "Memory Usage: " + data.memory + "%";
 
+    document.getElementById("traffic").innerText =
+        "Incoming Traffic: " + data.traffic + " req/min";
+
     document.getElementById("instances").innerText =
         "Active Instances: " + data.instances;
 
@@ -83,13 +88,6 @@ async function loadData(){
 
     document.getElementById("yearly").innerText =
         "Yearly Cost: $" + data.yearly_cost.toFixed(2);
-
-    // Migration visual effect
-    if(data.status.includes("Migrating")){
-        document.body.style.backgroundColor = "#fff3cd";
-    } else {
-        document.body.style.backgroundColor = "white";
-    }
 
     // CPU graph update
     cpuData.push(data.cpu);
@@ -136,7 +134,7 @@ const memChart = new Chart(memCtx, {
     }
 });
 
-setInterval(loadData, 10000);
+setInterval(loadData, 10000);  // refresh every 10 seconds
 loadData();
 </script>
 
