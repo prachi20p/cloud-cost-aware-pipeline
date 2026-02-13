@@ -152,7 +152,7 @@ async function loadData(){
     /* Alerts */
     clearAlert();
 
-    if(data.cpu>80)
+    if(data.cpu>10)
         showAlert("High CPU usage detected");
 
     if(prevCost && data.current_price > prevCost*1.1)
