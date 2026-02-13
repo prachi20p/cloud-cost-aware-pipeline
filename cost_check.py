@@ -5,26 +5,21 @@ import random
 import os
 import time
 
-# ---------- Setup ----------
 DATA_DIR = "data"
+HISTORY_DIR = f"{DATA_DIR}/history"
+
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(HISTORY_DIR, exist_ok=True)
 
 pricing = boto3.client("pricing", region_name="us-east-1")
 
-# Pricing-compatible regions
 pricing_locations = {
     "us-east-1": "US East (N. Virginia)",
-    "us-east-2": "US East (Ohio)",
-    "us-west-1": "US West (N. California)",
     "us-west-2": "US West (Oregon)",
     "eu-west-1": "EU (Ireland)",
-    "eu-central-1": "EU (Frankfurt)",
     "ap-south-1": "Asia Pacific (Mumbai)",
-    "ap-southeast-1": "Asia Pacific (Singapore)",
-    "ap-northeast-1": "Asia Pacific (Tokyo)"
 }
 
-# ---------- Pricing Fetch ----------
 def get_price(region_location):
     try:
         response = pricing.get_products(
@@ -41,32 +36,20 @@ def get_price(region_location):
         terms = next(iter(price_item["terms"]["OnDemand"].values()))
         dims = next(iter(terms["priceDimensions"].values()))
         return float(dims["pricePerUnit"]["USD"])
-
     except Exception:
-        return 999  # fallback
+        return 999
 
 prices = {r: get_price(loc) for r, loc in pricing_locations.items()}
 
-# ---------- Monitoring ----------
 cpu = psutil.cpu_percent(interval=1)
 memory = psutil.virtual_memory().percent
-
-# Traffic simulation
 traffic = random.randint(50, 500)
 
-# ---------- Deployment Decision ----------
 current_region = "us-east-1"
 cheapest_region = min(prices, key=prices.get)
 
 current_price = prices[current_region]
-cheapest_price = prices[cheapest_region]
-
-# Region decision
-if cpu > 70 or traffic > 400:
-    best_region = cheapest_region
-else:
-    best_region = current_region
-
+best_region = cheapest_region
 best_price = prices[best_region]
 
 status = (
@@ -75,31 +58,27 @@ status = (
     else "Running optimally"
 )
 
-# ---------- Auto Scaling ----------
 if cpu > 75 or traffic > 400:
     instances = 4
-elif cpu > 55 or traffic > 250:
+elif cpu > 55:
     instances = 3
 elif cpu > 35:
     instances = 2
 else:
     instances = 1
 
-# ---------- Cost Prediction ----------
 monthly_cost = current_price * 24 * 30
-yearly_cost = monthly_cost * 12
+forecast_monthly = monthly_cost * random.uniform(0.9, 1.2)
 
-# ---------- Multi‑Project Simulation ----------
 projects = ["projectA", "projectB", "projectC"]
 
 for project in projects:
 
-    # Slight variation per project
-    proj_cpu = min(100, cpu + random.randint(-10, 10))
-    proj_mem = min(100, memory + random.randint(-10, 10))
+    proj_cpu = max(1, min(100, cpu + random.randint(-10, 10)))
+    proj_mem = max(1, min(100, memory + random.randint(-10, 10)))
     proj_traffic = max(50, traffic + random.randint(-50, 50))
 
-    data = {
+    project_data = {
         "project": project,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "current_region": current_region,
@@ -113,14 +92,35 @@ for project in projects:
         "instances": instances,
         "status": status,
         "monthly_cost": monthly_cost,
-        "yearly_cost": yearly_cost,
+        "forecast_monthly": forecast_monthly,
     }
 
     with open(f"{DATA_DIR}/{project}.json", "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(project_data, f, indent=2)
 
-# ---------- Project List ----------
+    history_file = f"{HISTORY_DIR}/{project}.json"
+
+    record = {
+        "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "cpu": proj_cpu,
+        "memory": proj_mem,
+        "traffic": proj_traffic,
+        "instances": instances,
+        "cost": current_price
+    }
+
+    history = []
+    if os.path.exists(history_file):
+        with open(history_file) as f:
+            history = json.load(f)
+
+    history.append(record)
+    history = history[-200:]
+
+    with open(history_file, "w") as f:
+        json.dump(history, f, indent=2)
+
 with open(f"{DATA_DIR}/projects.json", "w") as f:
     json.dump(projects, f)
 
-print("All project dashboards updated successfully.")
+print("Dashboards and analytics updated.")

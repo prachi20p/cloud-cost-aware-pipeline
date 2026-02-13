@@ -1,289 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cloud Cost-Aware Deployment Dashboard</title>
+<title>Cloud Cost-Aware Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-    font-family: Arial;
-    background: #eef1f5;
-    margin: 20px;
-}
-
-h1 { color: #333; }
-
-.section { margin-bottom: 30px; }
-
+body { font-family: Arial; background: #eef1f5; margin: 20px; }
 .card {
-    background: white;
-    padding: 15px;
-    margin: 10px;
-    border-radius: 10px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-    display: inline-block;
-    width: 250px;
-    vertical-align: top;
+    background:white;padding:15px;margin:10px;
+    border-radius:10px;display:inline-block;width:250px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.1);
 }
-
-.good { border-left: 6px solid #28a745; }
-.warn { border-left: 6px solid #ffc107; }
-.bad  { border-left: 6px solid #dc3545; }
-
 .alert {
-    background: #fff3cd;
-    border-left: 6px solid #ffc107;
-    padding: 12px;
-    margin-bottom: 20px;
-    border-radius: 8px;
-    display: none;
+    background:#fff3cd;padding:10px;
+    border-left:5px solid #ffc107;
+    margin-bottom:15px;display:none;
 }
-
-canvas {
-    max-width: 950px;
-    margin-bottom: 40px;
-}
+canvas { max-width:900px;margin-bottom:40px; }
 </style>
 </head>
 
 <body>
 
-<h1>Cloud Cost-Aware Deployment Dashboard</h1>
+<h1>Cloud Cost-Aware Dashboard</h1>
 
 <div id="alertBox" class="alert"></div>
 
-<h2>Select Project</h2>
 <select id="projectSelect" onchange="loadData()"></select>
 
-<div class="section">
-<h2>System Overview</h2>
-
-<div class="card good"><p id="cpu"></p></div>
-<div class="card good"><p id="mem"></p></div>
-<div class="card good"><p id="instances"></p></div>
-<div class="card good"><p id="traffic"></p></div>
-
-</div>
-
-<div class="section">
-<h2>Deployment Details</h2>
+<div class="card"><p id="cpu"></p></div>
+<div class="card"><p id="mem"></p></div>
+<div class="card"><p id="instances"></p></div>
+<div class="card"><p id="traffic"></p></div>
 
 <div class="card"><p id="region"></p></div>
-<div class="card"><p id="cheapest"></p></div>
-<div class="card"><p id="saving"></p></div>
 <div class="card"><p id="status"></p></div>
 
-</div>
-
-<h2>Project Comparison</h2>
-<div id="comparison"></div>
-
-<h3 id="totalCost"></h3>
-
-<h2>CPU Usage Trend</h2>
+<h2>CPU Trend</h2>
 <canvas id="cpuChart"></canvas>
 
-<h2>Memory Usage Trend</h2>
-<canvas id="memChart"></canvas>
+<h2>Daily Cost Trend</h2>
+<canvas id="costChart"></canvas>
 
-<h2>Scaling Trend</h2>
-<canvas id="scaleChart"></canvas>
-
-<h2>CPU History Analytics</h2>
-<canvas id="cpuHistory"></canvas>
+<h2>Scaling vs Cost</h2>
+<canvas id="scaleCostChart"></canvas>
 
 <script>
-let cpuData = [];
-let memData = [];
-let scaleData = [];
-let prevCost = null;
+let cpuData=[],costData=[],instData=[];
 
-/* -------- Alerts -------- */
-function showAlert(msg){
-    const box = document.getElementById("alertBox");
-    box.innerHTML = msg;
-    box.style.display = "block";
+function alertMsg(msg){
+ let box=document.getElementById("alertBox");
+ box.innerHTML=msg;box.style.display="block";
 }
 
-function clearAlert(){
-    document.getElementById("alertBox").style.display = "none";
-}
-
-/* -------- Load Projects -------- */
 async function loadProjects(){
-    const res = await fetch("data/projects.json");
-    const projects = await res.json();
-
-    const select = document.getElementById("projectSelect");
-    select.innerHTML = "";
-
-    projects.forEach(p => {
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.text = p;
-        select.appendChild(opt);
-    });
-
-    loadData();
-    loadComparison();
+ const r=await fetch("data/projects.json");
+ const ps=await r.json();
+ let s=document.getElementById("projectSelect");
+ s.innerHTML="";
+ ps.forEach(p=>{
+   let o=document.createElement("option");
+   o.value=p;o.text=p;s.appendChild(o);
+ });
+ loadData();
 }
 
-/* -------- Load Project Data -------- */
 async function loadData(){
-    const project =
-        document.getElementById("projectSelect").value;
+ let p=document.getElementById("projectSelect").value;
+ let r=await fetch("data/"+p+".json");
+ let d=await r.json();
 
-    const res = await fetch("data/" + project + ".json");
-    const data = await res.json();
+ document.getElementById("cpu").innerText="CPU: "+d.cpu+"%";
+ document.getElementById("mem").innerText="Memory: "+d.memory+"%";
+ document.getElementById("instances").innerText="Instances: "+d.instances;
+ document.getElementById("traffic").innerText="Traffic: "+d.traffic;
+ document.getElementById("region").innerText="Region: "+d.current_region;
+ document.getElementById("status").innerText=d.status;
 
-    document.getElementById("region").innerText =
-        "Current Region: " + data.current_region +
-        " ($" + data.current_price + "/hr)";
+ if(d.cpu>80) alertMsg("High CPU detected");
 
-    document.getElementById("cheapest").innerText =
-        "Best Region: " + data.best_region +
-        " ($" + data.best_price + "/hr)";
+ cpuData.push(d.cpu);
+ if(cpuData.length>20) cpuData.shift();
+ cpuChart.data.labels=cpuData.map((_,i)=>i);
+ cpuChart.data.datasets[0].data=cpuData;
+ cpuChart.update();
 
-    document.getElementById("saving").innerText =
-        "Savings: $" + data.savings.toFixed(4) + "/hr";
+ const hr=await fetch("data/history/"+p+".json");
+ const hist=await hr.json();
 
-    document.getElementById("status").innerText =
-        "Status: " + data.status;
+ costData=hist.map(x=>x.cost);
+ instData=hist.map(x=>x.instances);
 
-    document.getElementById("cpu").innerText =
-        "CPU Usage: " + data.cpu + "%";
+ costChart.data.labels=costData.map((_,i)=>i);
+ costChart.data.datasets[0].data=costData;
+ costChart.update();
 
-    document.getElementById("mem").innerText =
-        "Memory Usage: " + data.memory + "%";
-
-    document.getElementById("traffic").innerText =
-        "Traffic Load: " + data.traffic;
-
-    document.getElementById("instances").innerText =
-        "Active Instances: " + data.instances;
-
-    /* Alerts */
-    clearAlert();
-
-    if(data.cpu > 80)
-        showAlert("High CPU usage detected");
-
-    if(prevCost && data.current_price > prevCost * 1.1)
-        showAlert("Cost spike detected");
-
-    if(data.best_region !== data.current_region)
-        showAlert("Migration recommended to cheaper region");
-
-    prevCost = data.current_price;
-
-    /* Live CPU graph */
-    cpuData.push(data.cpu);
-    if(cpuData.length > 20) cpuData.shift();
-
-    cpuChart.data.labels = cpuData.map((_,i)=>i);
-    cpuChart.data.datasets[0].data = cpuData;
-    cpuChart.update();
-
-    /* Memory graph */
-    memData.push(data.memory);
-    if(memData.length > 20) memData.shift();
-
-    memChart.data.labels = memData.map((_,i)=>i);
-    memChart.data.datasets[0].data = memData;
-    memChart.update();
-
-    /* Scaling graph */
-    scaleData.push(data.instances);
-    if(scaleData.length > 20) scaleData.shift();
-
-    scaleChart.data.labels = scaleData.map((_,i)=>i);
-    scaleChart.data.datasets[0].data = scaleData;
-    scaleChart.update();
-
-    /* History chart */
-    const histRes =
-        await fetch("data/history/" + project + ".json");
-
-    const hist = await histRes.json();
-
-    const cpuHistory = hist.map(x => x.cpu);
-
-    historyChart.data.labels =
-        cpuHistory.map((_,i)=>i);
-
-    historyChart.data.datasets[0].data =
-        cpuHistory;
-
-    historyChart.update();
+ scaleCostChart.data.labels=instData.map((_,i)=>i);
+ scaleCostChart.data.datasets[0].data=instData;
+ scaleCostChart.update();
 }
 
-/* -------- Comparison -------- */
-async function loadComparison(){
-    const res = await fetch("data/projects.json");
-    const projects = await res.json();
+const cpuChart=new Chart(document.getElementById("cpuChart"),
+{type:"line",data:{labels:[],datasets:[{label:"CPU %",data:[],borderColor:"red"}]}});
 
-    let html = "";
-    let total = 0;
+const costChart=new Chart(document.getElementById("costChart"),
+{type:"line",data:{labels:[],datasets:[{label:"Cost Trend",data:[],borderColor:"blue"}]}});
 
-    for(const p of projects){
-        const r = await fetch("data/" + p + ".json");
-        const d = await r.json();
+const scaleCostChart=new Chart(document.getElementById("scaleCostChart"),
+{type:"line",data:{labels:[],datasets:[{label:"Instances",data:[],borderColor:"green"}]}});
 
-        total += d.current_price;
-
-        html += `
-        <div class="card">
-            <b>${p}</b><br>
-            Region: ${d.current_region}<br>
-            Cost/hr: $${d.current_price.toFixed(4)}<br>
-            Instances: ${d.instances}<br>
-            Status: ${d.status}
-        </div>`;
-    }
-
-    document.getElementById("comparison").innerHTML = html;
-
-    document.getElementById("totalCost").innerText =
-        "Total hourly cost across projects: $" +
-        total.toFixed(4);
-}
-
-/* -------- Charts -------- */
-const cpuChart = new Chart(
-    document.getElementById("cpuChart"),
-    { type: "line",
-      data: { labels: [],
-      datasets: [{ label: "CPU %", data: [], borderColor: "red" }] }
-    }
-);
-
-const memChart = new Chart(
-    document.getElementById("memChart"),
-    { type: "line",
-      data: { labels: [],
-      datasets: [{ label: "Memory %", data: [], borderColor: "blue" }] }
-    }
-);
-
-const scaleChart = new Chart(
-    document.getElementById("scaleChart"),
-    { type: "line",
-      data: { labels: [],
-      datasets: [{ label: "Instances", data: [], borderColor: "green" }] }
-    }
-);
-
-const historyChart = new Chart(
-    document.getElementById("cpuHistory"),
-    { type: "line",
-      data: { labels: [],
-      datasets: [{ label: "CPU History", data: [], borderColor: "purple" }] }
-    }
-);
-
-setInterval(loadData, 10000);
+setInterval(loadData,10000);
 loadProjects();
-
 </script>
 
 </body>
