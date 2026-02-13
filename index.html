@@ -5,17 +5,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-    font-family: Arial;
-    background: #f4f6f9;
-    margin: 20px;
-}
+body { font-family: Arial; background: #f4f6f9; margin: 20px; }
+h1, h2 { color: #333; }
 
-h1, h2 {
-    color: #333;
-}
-
-/* Alert banner */
 .alert {
     background: #ffeeba;
     border-left: 6px solid #ff9800;
@@ -25,13 +17,8 @@ h1, h2 {
     display: none;
 }
 
-/* Card container */
-.container {
-    display: flex;
-    flex-wrap: wrap;
-}
+.container { display: flex; flex-wrap: wrap; }
 
-/* Cards */
 .card {
     background: white;
     padding: 15px;
@@ -41,18 +28,13 @@ h1, h2 {
     width: 230px;
 }
 
-/* Charts */
-canvas {
-    max-width: 900px;
-    margin-bottom: 40px;
-}
+canvas { max-width: 900px; margin-bottom: 40px; }
 </style>
 </head>
 
 <body>
 
 <h1>Cloud Cost-Aware Deployment Dashboard</h1>
-
 <div id="alertBox" class="alert"></div>
 
 <h2>Select Project</h2>
@@ -70,6 +52,7 @@ canvas {
 <div class="container">
 <div class="card"><p id="region"></p></div>
 <div class="card"><p id="bestRegion"></p></div>
+<div class="card"><p id="saving"></p></div>
 <div class="card"><p id="status"></p></div>
 </div>
 
@@ -87,22 +70,20 @@ canvas {
 
 <script>
 let cpuHistory=[];
-let costHistory=[];
-let instHistory=[];
 let prevCost=null;
 
-/* -------- Alerts -------- */
 function showAlert(msg){
     const box=document.getElementById("alertBox");
-    box.innerHTML=msg;
+    box.innerHTML += msg + "<br>";
     box.style.display="block";
 }
 
 function clearAlert(){
-    document.getElementById("alertBox").style.display="none";
+    const box=document.getElementById("alertBox");
+    box.innerHTML="";
+    box.style.display="none";
 }
 
-/* -------- Load Projects -------- */
 async function loadProjects(){
     const res=await fetch("data/projects.json");
     const projects=await res.json();
@@ -111,7 +92,7 @@ async function loadProjects(){
     sel.innerHTML="";
 
     projects.forEach(p=>{
-        let o=document.createElement("option");
+        const o=document.createElement("option");
         o.value=p;
         o.text=p;
         sel.appendChild(o);
@@ -120,35 +101,21 @@ async function loadProjects(){
     loadData();
 }
 
-/* -------- Load Dashboard Data -------- */
 async function loadData(){
     const project=document.getElementById("projectSelect").value;
-
     const res=await fetch("data/"+project+".json");
     const data=await res.json();
 
-    document.getElementById("cpu").innerText=
-        "CPU Usage: "+data.cpu+"%";
+    document.getElementById("cpu").innerText="CPU Usage: "+data.cpu+"%";
+    document.getElementById("memory").innerText="Memory Usage: "+data.memory+"%";
+    document.getElementById("instances").innerText="Active Instances: "+data.instances;
+    document.getElementById("traffic").innerText="Traffic Load: "+data.traffic;
 
-    document.getElementById("memory").innerText=
-        "Memory Usage: "+data.memory+"%";
+    document.getElementById("region").innerText="Current Region: "+data.current_region;
+    document.getElementById("bestRegion").innerText="Best Region: "+data.best_region;
+    document.getElementById("saving").innerText="Savings: $"+data.savings.toFixed(4)+"/hr";
+    document.getElementById("status").innerText="Status: "+data.status;
 
-    document.getElementById("instances").innerText=
-        "Active Instances: "+data.instances;
-
-    document.getElementById("traffic").innerText=
-        "Traffic Load: "+data.traffic;
-
-    document.getElementById("region").innerText=
-        "Current Region: "+data.current_region;
-
-    document.getElementById("bestRegion").innerText=
-        "Best Region: "+data.best_region;
-
-    document.getElementById("status").innerText=
-        "Status: "+data.status;
-
-    /* Alerts */
     clearAlert();
 
     if(data.cpu>80)
@@ -160,9 +127,17 @@ async function loadData(){
     if(data.best_region !== data.current_region)
         showAlert("Migration recommended to cheaper region");
 
+    if(data.predicted_traffic > 450)
+        showAlert("Predicted traffic spike incoming");
+
+    if(data.recommend_scale)
+        showAlert("Scaling recommended soon");
+
+    if(data.predicted_cost > data.current_price * 1.1)
+        showAlert("Future cost increase predicted");
+
     prevCost=data.current_price;
 
-    /* CPU trend */
     cpuHistory.push(data.cpu);
     if(cpuHistory.length>20) cpuHistory.shift();
 
@@ -170,13 +145,11 @@ async function loadData(){
     cpuChart.data.datasets[0].data=cpuHistory;
     cpuChart.update();
 
-    /* History file */
-    const histRes=
-        await fetch("data/history/"+project+".json");
+    const histRes=await fetch("data/history/"+project+".json");
     const hist=await histRes.json();
 
-    costHistory=hist.map(x=>x.cost);
-    instHistory=hist.map(x=>x.instances);
+    const costHistory=hist.map(x=>x.cost);
+    const instHistory=hist.map(x=>x.instances);
 
     costChart.data.labels=costHistory.map((_,i)=>i);
     costChart.data.datasets[0].data=costHistory;
@@ -186,40 +159,25 @@ async function loadData(){
     instanceChart.data.datasets[0].data=instHistory;
     instanceChart.update();
 
-    /* Forecast chart */
     if(data.forecast){
-        forecastChart.data.datasets[0].data =
-            data.forecast;
+        forecastChart.data.datasets[0].data=data.forecast;
         forecastChart.update();
     }
 }
 
-/* -------- Charts -------- */
-const cpuChart=new Chart(
-document.getElementById("cpuChart"),
-{type:"line",
-data:{labels:[],
-datasets:[{label:"CPU %",data:[],borderColor:"red"}]}});
+const cpuChart=new Chart(document.getElementById("cpuChart"),
+{type:"line",data:{labels:[],datasets:[{label:"CPU %",data:[],borderColor:"red"}]}});
 
-const costChart=new Chart(
-document.getElementById("costChart"),
-{type:"line",
-data:{labels:[],
-datasets:[{label:"Cost Trend",data:[],borderColor:"blue"}]}});
+const costChart=new Chart(document.getElementById("costChart"),
+{type:"line",data:{labels:[],datasets:[{label:"Cost Trend",data:[],borderColor:"blue"}]}});
 
-const instanceChart=new Chart(
-document.getElementById("instanceChart"),
-{type:"line",
-data:{labels:[],
-datasets:[{label:"Instances",data:[],borderColor:"green"}]}});
+const instanceChart=new Chart(document.getElementById("instanceChart"),
+{type:"line",data:{labels:[],datasets:[{label:"Instances",data:[],borderColor:"green"}]}});
 
-const forecastChart=new Chart(
-document.getElementById("forecastChart"),
-{type:"line",
-data:{
+const forecastChart=new Chart(document.getElementById("forecastChart"),
+{type:"line",data:{
 labels:["Current","Next Month","Month 2","Month 3"],
-datasets:[{label:"Forecast Cost",data:[],borderColor:"purple"}]
-}});
+datasets:[{label:"Forecast Cost",data:[],borderColor:"purple"}]}});
 
 setInterval(loadData,10000);
 loadProjects();
