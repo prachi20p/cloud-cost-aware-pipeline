@@ -24,23 +24,24 @@ h1 { color: #333; }
     display: inline-block;
     width: 250px;
     vertical-align: top;
-    transition: 0.2s;
 }
-
-.card:hover { transform: scale(1.02); }
 
 .good { border-left: 6px solid #28a745; }
 .warn { border-left: 6px solid #ffc107; }
 .bad  { border-left: 6px solid #dc3545; }
 
+.alert {
+    background: #fff3cd;
+    border-left: 6px solid #ffc107;
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    display: none;
+}
+
 canvas {
     max-width: 950px;
     margin-bottom: 40px;
-}
-
-.instances span {
-    font-size: 24px;
-    margin-right: 4px;
 }
 </style>
 </head>
@@ -49,10 +50,11 @@ canvas {
 
 <h1>Cloud Cost-Aware Deployment Dashboard</h1>
 
+<div id="alertBox" class="alert"></div>
+
 <h2>Select Project</h2>
 <select id="projectSelect" onchange="loadData()"></select>
 
-<!-- ---------- Overview ---------- -->
 <div class="section">
 <h2>System Overview</h2>
 
@@ -63,7 +65,6 @@ canvas {
 
 </div>
 
-<!-- ---------- Deployment ---------- -->
 <div class="section">
 <h2>Deployment Details</h2>
 
@@ -74,13 +75,11 @@ canvas {
 
 </div>
 
-<!-- ---------- Comparison ---------- -->
 <h2>Project Comparison</h2>
 <div id="comparison"></div>
 
 <h3 id="totalCost"></h3>
 
-<!-- ---------- Charts ---------- -->
 <h2>CPU Usage Trend</h2>
 <canvas id="cpuChart"></canvas>
 
@@ -97,8 +96,20 @@ canvas {
 let cpuData = [];
 let memData = [];
 let scaleData = [];
+let prevCost = null;
 
-/* ---------- Load Projects ---------- */
+/* -------- Alerts -------- */
+function showAlert(msg){
+    const box = document.getElementById("alertBox");
+    box.innerHTML = msg;
+    box.style.display = "block";
+}
+
+function clearAlert(){
+    document.getElementById("alertBox").style.display = "none";
+}
+
+/* -------- Load Projects -------- */
 async function loadProjects(){
     const res = await fetch("data/projects.json");
     const projects = await res.json();
@@ -117,7 +128,7 @@ async function loadProjects(){
     loadComparison();
 }
 
-/* ---------- Load Data ---------- */
+/* -------- Load Project Data -------- */
 async function loadData(){
     const project =
         document.getElementById("projectSelect").value;
@@ -125,7 +136,6 @@ async function loadData(){
     const res = await fetch("data/" + project + ".json");
     const data = await res.json();
 
-    /* Deployment info */
     document.getElementById("region").innerText =
         "Current Region: " + data.current_region +
         " ($" + data.current_price + "/hr)";
@@ -135,12 +145,11 @@ async function loadData(){
         " ($" + data.best_price + "/hr)";
 
     document.getElementById("saving").innerText =
-        "Savings: $" + data.savings + "/hr";
+        "Savings: $" + data.savings.toFixed(4) + "/hr";
 
     document.getElementById("status").innerText =
         "Status: " + data.status;
 
-    /* Overview cards */
     document.getElementById("cpu").innerText =
         "CPU Usage: " + data.cpu + "%";
 
@@ -150,26 +159,22 @@ async function loadData(){
     document.getElementById("traffic").innerText =
         "Traffic Load: " + data.traffic;
 
-    /* Instance icons */
-    let icons = "";
-    for(let i=0;i<data.instances;i++)
-        icons += "🖥️";
+    document.getElementById("instances").innerText =
+        "Active Instances: " + data.instances;
 
-    document.getElementById("instances").innerHTML =
-        "Instances:<div class='instances'>" + icons + "</div>";
+    /* Alerts */
+    clearAlert();
 
-    /* Status coloring */
-    let cpuCard =
-        document.getElementById("cpu").parentElement;
+    if(data.cpu > 80)
+        showAlert("High CPU usage detected");
 
-    cpuCard.classList.remove("good","warn","bad");
+    if(prevCost && data.current_price > prevCost * 1.1)
+        showAlert("Cost spike detected");
 
-    if(data.cpu > 75)
-        cpuCard.classList.add("bad");
-    else if(data.cpu > 55)
-        cpuCard.classList.add("warn");
-    else
-        cpuCard.classList.add("good");
+    if(data.best_region !== data.current_region)
+        showAlert("Migration recommended to cheaper region");
+
+    prevCost = data.current_price;
 
     /* Live CPU graph */
     cpuData.push(data.cpu);
@@ -195,7 +200,7 @@ async function loadData(){
     scaleChart.data.datasets[0].data = scaleData;
     scaleChart.update();
 
-    /* History analytics */
+    /* History chart */
     const histRes =
         await fetch("data/history/" + project + ".json");
 
@@ -212,7 +217,7 @@ async function loadData(){
     historyChart.update();
 }
 
-/* ---------- Comparison ---------- */
+/* -------- Comparison -------- */
 async function loadComparison(){
     const res = await fetch("data/projects.json");
     const projects = await res.json();
@@ -243,40 +248,39 @@ async function loadComparison(){
         total.toFixed(4);
 }
 
-/* ---------- Charts ---------- */
+/* -------- Charts -------- */
 const cpuChart = new Chart(
     document.getElementById("cpuChart"),
-    {
-        type: "line",
-        data: { labels: [], datasets: [{ label: "CPU %", data: [], borderColor: "red" }] }
+    { type: "line",
+      data: { labels: [],
+      datasets: [{ label: "CPU %", data: [], borderColor: "red" }] }
     }
 );
 
 const memChart = new Chart(
     document.getElementById("memChart"),
-    {
-        type: "line",
-        data: { labels: [], datasets: [{ label: "Memory %", data: [], borderColor: "blue" }] }
+    { type: "line",
+      data: { labels: [],
+      datasets: [{ label: "Memory %", data: [], borderColor: "blue" }] }
     }
 );
 
 const scaleChart = new Chart(
     document.getElementById("scaleChart"),
-    {
-        type: "line",
-        data: { labels: [], datasets: [{ label: "Instances", data: [], borderColor: "green" }] }
+    { type: "line",
+      data: { labels: [],
+      datasets: [{ label: "Instances", data: [], borderColor: "green" }] }
     }
 );
 
 const historyChart = new Chart(
     document.getElementById("cpuHistory"),
-    {
-        type: "line",
-        data: { labels: [], datasets: [{ label: "CPU History", data: [], borderColor: "purple" }] }
+    { type: "line",
+      data: { labels: [],
+      datasets: [{ label: "CPU History", data: [], borderColor: "purple" }] }
     }
 );
 
-/* ---------- Auto Refresh ---------- */
 setInterval(loadData, 10000);
 loadProjects();
 
