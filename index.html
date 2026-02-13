@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cloud Cost-Aware Dashboard</title>
+<title>Cloud Cost-Aware Deployment Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -11,12 +11,11 @@ body {
     margin: 20px;
 }
 
-/* Titles */
 h1, h2 {
     color: #333;
 }
 
-/* Alert */
+/* Alert banner */
 .alert {
     background: #ffeeba;
     border-left: 6px solid #ff9800;
@@ -26,12 +25,13 @@ h1, h2 {
     display: none;
 }
 
-/* Cards */
+/* Card container */
 .container {
     display: flex;
     flex-wrap: wrap;
 }
 
+/* Cards */
 .card {
     background: white;
     padding: 15px;
@@ -70,7 +70,6 @@ canvas {
 <div class="container">
 <div class="card"><p id="region"></p></div>
 <div class="card"><p id="bestRegion"></p></div>
-<div class="card"><p id="saving"></p></div>
 <div class="card"><p id="status"></p></div>
 </div>
 
@@ -83,13 +82,16 @@ canvas {
 <h2>Instance Scaling Trend</h2>
 <canvas id="instanceChart"></canvas>
 
+<h2>Monthly Cost Forecast</h2>
+<canvas id="forecastChart"></canvas>
+
 <script>
 let cpuHistory=[];
 let costHistory=[];
 let instHistory=[];
 let prevCost=null;
 
-/* ---------- Alerts ---------- */
+/* -------- Alerts -------- */
 function showAlert(msg){
     const box=document.getElementById("alertBox");
     box.innerHTML=msg;
@@ -100,7 +102,7 @@ function clearAlert(){
     document.getElementById("alertBox").style.display="none";
 }
 
-/* ---------- Load Projects ---------- */
+/* -------- Load Projects -------- */
 async function loadProjects(){
     const res=await fetch("data/projects.json");
     const projects=await res.json();
@@ -118,7 +120,7 @@ async function loadProjects(){
     loadData();
 }
 
-/* ---------- Load Dashboard Data ---------- */
+/* -------- Load Dashboard Data -------- */
 async function loadData(){
     const project=document.getElementById("projectSelect").value;
 
@@ -142,9 +144,6 @@ async function loadData(){
 
     document.getElementById("bestRegion").innerText=
         "Best Region: "+data.best_region;
-
-    document.getElementById("saving").innerText=
-        "Savings: $"+data.savings.toFixed(4)+"/hr";
 
     document.getElementById("status").innerText=
         "Status: "+data.status;
@@ -186,9 +185,16 @@ async function loadData(){
     instanceChart.data.labels=instHistory.map((_,i)=>i);
     instanceChart.data.datasets[0].data=instHistory;
     instanceChart.update();
+
+    /* Forecast chart */
+    if(data.forecast){
+        forecastChart.data.datasets[0].data =
+            data.forecast;
+        forecastChart.update();
+    }
 }
 
-/* ---------- Charts ---------- */
+/* -------- Charts -------- */
 const cpuChart=new Chart(
 document.getElementById("cpuChart"),
 {type:"line",
@@ -206,6 +212,14 @@ document.getElementById("instanceChart"),
 {type:"line",
 data:{labels:[],
 datasets:[{label:"Instances",data:[],borderColor:"green"}]}});
+
+const forecastChart=new Chart(
+document.getElementById("forecastChart"),
+{type:"line",
+data:{
+labels:["Current","Next Month","Month 2","Month 3"],
+datasets:[{label:"Forecast Cost",data:[],borderColor:"purple"}]
+}});
 
 setInterval(loadData,10000);
 loadProjects();
