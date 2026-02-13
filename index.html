@@ -3,7 +3,6 @@
 <head>
 <title>Cloud Cost-Aware Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<meta http-equiv="refresh" content="10">
 
 <style>
 body {
@@ -21,6 +20,11 @@ body {
     display: inline-block;
     width: 260px;
     vertical-align: top;
+}
+
+canvas {
+    max-width: 900px;
+    margin-bottom: 40px;
 }
 </style>
 </head>
@@ -60,12 +64,15 @@ body {
 <h2>Scaling Trend</h2>
 <canvas id="scaleChart"></canvas>
 
+<h2>CPU History (Analytics)</h2>
+<canvas id="cpuHistory"></canvas>
+
 <script>
 let cpuData = [];
 let memData = [];
 let scaleData = [];
 
-/* -------- Load Projects -------- */
+/* ---------- Load Projects ---------- */
 async function loadProjects(){
     const res = await fetch("data/projects.json");
     const projects = await res.json();
@@ -84,7 +91,7 @@ async function loadProjects(){
     loadComparison();
 }
 
-/* -------- Load Project Data -------- */
+/* ---------- Load Selected Project ---------- */
 async function loadData(){
     const project =
         document.getElementById("projectSelect").value;
@@ -118,29 +125,45 @@ async function loadData(){
     document.getElementById("status").innerText =
         "Status: " + data.status;
 
-    /* CPU Graph */
+    /* Live CPU chart */
     cpuData.push(data.cpu);
     if(cpuData.length > 20) cpuData.shift();
     cpuChart.data.labels = cpuData.map((_,i)=>i);
     cpuChart.data.datasets[0].data = cpuData;
     cpuChart.update();
 
-    /* Memory Graph */
+    /* Live Memory chart */
     memData.push(data.memory);
     if(memData.length > 20) memData.shift();
     memChart.data.labels = memData.map((_,i)=>i);
     memChart.data.datasets[0].data = memData;
     memChart.update();
 
-    /* Scaling Graph */
+    /* Scaling chart */
     scaleData.push(data.instances);
     if(scaleData.length > 20) scaleData.shift();
     scaleChart.data.labels = scaleData.map((_,i)=>i);
     scaleChart.data.datasets[0].data = scaleData;
     scaleChart.update();
+
+    /* ---------- Historical CPU ---------- */
+    const histRes =
+        await fetch("data/history/" + project + ".json");
+
+    const hist = await histRes.json();
+
+    const cpuHistory = hist.map(x => x.cpu);
+
+    historyChart.data.labels =
+        cpuHistory.map((_,i)=>i);
+
+    historyChart.data.datasets[0].data =
+        cpuHistory;
+
+    historyChart.update();
 }
 
-/* -------- Comparison View -------- */
+/* ---------- Comparison Dashboard ---------- */
 async function loadComparison(){
     const res = await fetch("data/projects.json");
     const projects = await res.json();
@@ -165,11 +188,13 @@ async function loadComparison(){
     }
 
     document.getElementById("comparison").innerHTML = html;
+
     document.getElementById("totalCost").innerText =
-        "Total hourly cost across projects: $" + total.toFixed(4);
+        "Total hourly cost across projects: $" +
+        total.toFixed(4);
 }
 
-/* -------- Charts -------- */
+/* ---------- Charts ---------- */
 const cpuChart = new Chart(
     document.getElementById("cpuChart"),
     {
@@ -218,9 +243,26 @@ const scaleChart = new Chart(
     }
 );
 
-/* -------- Auto Refresh -------- */
+const historyChart = new Chart(
+    document.getElementById("cpuHistory"),
+    {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "CPU History",
+                data: [],
+                borderColor: "purple",
+                fill: false
+            }]
+        }
+    }
+);
+
+/* ---------- Auto Refresh ---------- */
 setInterval(loadData, 10000);
 loadProjects();
+
 </script>
 
 </body>
