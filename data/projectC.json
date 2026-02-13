@@ -1,15 +1,16 @@
 {
   "project": "projectC",
-  "current_region": "eu-west-1",
-  "current_price": 0.0135,
+  "timestamp": "2026-02-13 12:01:51",
+  "current_region": "us-east-1",
+  "current_price": 0.0116,
   "best_region": "ap-south-1",
-  "best_price": 0.0104,
-  "savings": 0.0031,
-  "cpu": 81,
-  "memory": 76,
-  "traffic": 450,
-  "instances": 4,
-  "status": "Migrating workload to cheaper region",
-  "monthly_cost": 9.72,
-  "yearly_cost": 116.64
+  "best_price": 0.0,
+  "savings": 0.0116,
+  "cpu": 18.7,
+  "memory": 84.5,
+  "traffic": 322,
+  "instances": 1,
+  "status": "Migrating workload to ap-south-1",
+  "monthly_cost": 8.352,
+  "forecast_monthly": 9.160280276749686
 }
