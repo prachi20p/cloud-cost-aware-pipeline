@@ -46,10 +46,9 @@ memory = psutil.virtual_memory().percent
 traffic = random.randint(50, 500)
 
 current_region = "us-east-1"
-cheapest_region = min(prices, key=prices.get)
+best_region = min(prices, key=prices.get)
 
 current_price = prices[current_region]
-best_region = cheapest_region
 best_price = prices[best_region]
 
 status = (
@@ -68,7 +67,10 @@ else:
     instances = 1
 
 monthly_cost = current_price * 24 * 30
-forecast_monthly = monthly_cost * random.uniform(0.9, 1.2)
+
+forecast_next_month = monthly_cost * random.uniform(0.9, 1.2)
+forecast_two_month = forecast_next_month * random.uniform(0.9, 1.15)
+forecast_three_month = forecast_two_month * random.uniform(0.9, 1.15)
 
 projects = ["projectA", "projectB", "projectC"]
 
@@ -82,17 +84,20 @@ for project in projects:
         "project": project,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "current_region": current_region,
-        "current_price": current_price,
         "best_region": best_region,
-        "best_price": best_price,
-        "savings": current_price - best_price,
+        "current_price": current_price,
         "cpu": proj_cpu,
         "memory": proj_mem,
         "traffic": proj_traffic,
         "instances": instances,
         "status": status,
         "monthly_cost": monthly_cost,
-        "forecast_monthly": forecast_monthly,
+        "forecast": [
+            monthly_cost,
+            forecast_next_month,
+            forecast_two_month,
+            forecast_three_month
+        ]
     }
 
     with open(f"{DATA_DIR}/{project}.json", "w") as f:
@@ -123,4 +128,4 @@ for project in projects:
 with open(f"{DATA_DIR}/projects.json", "w") as f:
     json.dump(projects, f)
 
-print("Dashboards and analytics updated.")
+print("Phase 14 analytics updated.")
