@@ -80,12 +80,19 @@ for project in projects:
     proj_mem = max(1, min(100, memory + random.randint(-10, 10)))
     proj_traffic = max(50, traffic + random.randint(-50, 50))
 
+    # AI-like predictions
+    predicted_traffic = proj_traffic + random.randint(20, 100)
+    predicted_cpu = min(100, proj_cpu + random.randint(5, 20))
+    predicted_cost = current_price * random.uniform(1.05, 1.25)
+
     project_data = {
         "project": project,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "current_region": current_region,
         "best_region": best_region,
         "current_price": current_price,
+        "best_price": best_price,
+        "savings": current_price - best_price,
         "cpu": proj_cpu,
         "memory": proj_mem,
         "traffic": proj_traffic,
@@ -97,7 +104,15 @@ for project in projects:
             forecast_next_month,
             forecast_two_month,
             forecast_three_month
-        ]
+        ],
+        "predicted_traffic": predicted_traffic,
+        "predicted_cpu": predicted_cpu,
+        "predicted_cost": predicted_cost,
+        "recommend_scale": predicted_cpu > 75,
+        "optimization_suggestion":
+            "Move to cheaper region"
+            if best_region != current_region
+            else "System already optimized"
     }
 
     with open(f"{DATA_DIR}/{project}.json", "w") as f:
@@ -128,4 +143,4 @@ for project in projects:
 with open(f"{DATA_DIR}/projects.json", "w") as f:
     json.dump(projects, f)
 
-print("Phase 14 analytics updated.")
+print("Phase 15 intelligent analytics updated.")
