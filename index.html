@@ -1,75 +1,107 @@
+<!DOCTYPE html>
 <html>
 <head>
-<title>Real AWS Cost Dashboard</title>
-
+<title>Cloud Cost-Aware Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta http-equiv="refresh" content="10">
 
 <style>
 body {
     font-family: Arial;
-    margin: 40px;
+    background: #f4f6f9;
+    margin: 20px;
 }
-canvas {
-    max-width: 800px;
-}
-h1 {
-    color: #2c3e50;
+
+.card {
+    background: white;
+    padding: 15px;
+    margin: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    display: inline-block;
+    width: 260px;
+    vertical-align: top;
 }
 </style>
-
 </head>
 
 <body>
 
-<h1>Real AWS Cost Dashboard</h1>
+<h1>Cloud Cost-Aware Deployment Dashboard</h1>
+
+<h2>Select Project</h2>
+<select id="projectSelect" onchange="loadData()"></select>
 
 <h2>Deployment Details</h2>
-<p id="region"></p>
-<p id="cheapest"></p>
-<p id="saving"></p>
-<p id="status"></p>
+
+<div class="card"><p id="region"></p></div>
+<div class="card"><p id="cheapest"></p></div>
+<div class="card"><p id="saving"></p></div>
+<div class="card"><p id="instances"></p></div>
 
 <h2>Server Usage</h2>
-<p id="cpu"></p>
-<p id="mem"></p>
 
-<h2>Traffic Simulation</h2>
-<p id="traffic"></p>
+<div class="card"><p id="cpu"></p></div>
+<div class="card"><p id="mem"></p></div>
+<div class="card"><p id="traffic"></p></div>
+<div class="card"><p id="status"></p></div>
 
-<h2>Auto Scaling</h2>
-<p id="instances"></p>
+<h2>Project Comparison</h2>
+<div id="comparison"></div>
 
-<h2>Cost Prediction</h2>
-<p id="monthly"></p>
-<p id="yearly"></p>
+<h3 id="totalCost"></h3>
 
-<h2>CPU Live Graph</h2>
+<h2>CPU Usage Trend</h2>
 <canvas id="cpuChart"></canvas>
 
-<h2>Memory Live Graph</h2>
+<h2>Memory Usage Trend</h2>
 <canvas id="memChart"></canvas>
+
+<h2>Scaling Trend</h2>
+<canvas id="scaleChart"></canvas>
 
 <script>
 let cpuData = [];
 let memData = [];
+let scaleData = [];
 
+/* -------- Load Projects -------- */
+async function loadProjects(){
+    const res = await fetch("data/projects.json");
+    const projects = await res.json();
+
+    const select = document.getElementById("projectSelect");
+    select.innerHTML = "";
+
+    projects.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.text = p;
+        select.appendChild(opt);
+    });
+
+    loadData();
+    loadComparison();
+}
+
+/* -------- Load Project Data -------- */
 async function loadData(){
-    const res = await fetch("data.json");
+    const project =
+        document.getElementById("projectSelect").value;
+
+    const res = await fetch("data/" + project + ".json");
     const data = await res.json();
 
     document.getElementById("region").innerText =
         "Current Region: " + data.current_region +
-        " ($" + data.current_price.toFixed(5) + "/hour)";
+        " ($" + data.current_price + "/hour)";
 
     document.getElementById("cheapest").innerText =
         "Best Region: " + data.best_region +
-        " ($" + data.best_price.toFixed(5) + "/hour)";
+        " ($" + data.best_price + "/hour)";
 
     document.getElementById("saving").innerText =
-        "Savings: $" + data.savings.toFixed(5) + "/hour";
-
-    document.getElementById("status").innerText =
-        "Migration Status: " + data.status;
+        "Savings: $" + data.savings + "/hour";
 
     document.getElementById("cpu").innerText =
         "CPU Usage: " + data.cpu + "%";
@@ -78,64 +110,117 @@ async function loadData(){
         "Memory Usage: " + data.memory + "%";
 
     document.getElementById("traffic").innerText =
-        "Incoming Traffic: " + data.traffic + " req/min";
+        "Traffic Load: " + data.traffic;
 
     document.getElementById("instances").innerText =
         "Active Instances: " + data.instances;
 
-    document.getElementById("monthly").innerText =
-        "Monthly Cost: $" + data.monthly_cost.toFixed(2);
+    document.getElementById("status").innerText =
+        "Status: " + data.status;
 
-    document.getElementById("yearly").innerText =
-        "Yearly Cost: $" + data.yearly_cost.toFixed(2);
-
-    // CPU graph update
+    /* CPU Graph */
     cpuData.push(data.cpu);
     if(cpuData.length > 20) cpuData.shift();
-
     cpuChart.data.labels = cpuData.map((_,i)=>i);
     cpuChart.data.datasets[0].data = cpuData;
     cpuChart.update();
 
-    // Memory graph update
+    /* Memory Graph */
     memData.push(data.memory);
     if(memData.length > 20) memData.shift();
-
     memChart.data.labels = memData.map((_,i)=>i);
     memChart.data.datasets[0].data = memData;
     memChart.update();
+
+    /* Scaling Graph */
+    scaleData.push(data.instances);
+    if(scaleData.length > 20) scaleData.shift();
+    scaleChart.data.labels = scaleData.map((_,i)=>i);
+    scaleChart.data.datasets[0].data = scaleData;
+    scaleChart.update();
 }
 
-const cpuCtx = document.getElementById('cpuChart').getContext('2d');
-const cpuChart = new Chart(cpuCtx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [{
-            label: 'CPU %',
-            data: [],
-            borderColor: 'red',
-            fill: false
-        }]
-    }
-});
+/* -------- Comparison View -------- */
+async function loadComparison(){
+    const res = await fetch("data/projects.json");
+    const projects = await res.json();
 
-const memCtx = document.getElementById('memChart').getContext('2d');
-const memChart = new Chart(memCtx, {
-    type: 'line',
-    data: {
-        labels: [],
-        datasets: [{
-            label: 'Memory %',
-            data: [],
-            borderColor: 'blue',
-            fill: false
-        }]
-    }
-});
+    let html = "";
+    let total = 0;
 
-setInterval(loadData, 10000);  // refresh every 10 seconds
-loadData();
+    for(const p of projects){
+        const r = await fetch("data/" + p + ".json");
+        const d = await r.json();
+
+        total += d.current_price;
+
+        html += `
+        <div class="card">
+            <b>${p}</b><br>
+            Region: ${d.current_region}<br>
+            Cost/hr: $${d.current_price.toFixed(4)}<br>
+            Instances: ${d.instances}<br>
+            Status: ${d.status}
+        </div>`;
+    }
+
+    document.getElementById("comparison").innerHTML = html;
+    document.getElementById("totalCost").innerText =
+        "Total hourly cost across projects: $" + total.toFixed(4);
+}
+
+/* -------- Charts -------- */
+const cpuChart = new Chart(
+    document.getElementById("cpuChart"),
+    {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "CPU %",
+                data: [],
+                borderColor: "red",
+                fill: false
+            }]
+        }
+    }
+);
+
+const memChart = new Chart(
+    document.getElementById("memChart"),
+    {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Memory %",
+                data: [],
+                borderColor: "blue",
+                fill: false
+            }]
+        }
+    }
+);
+
+const scaleChart = new Chart(
+    document.getElementById("scaleChart"),
+    {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Instances",
+                data: [],
+                borderColor: "green",
+                fill: false
+            }]
+        }
+    }
+);
+
+/* -------- Auto Refresh -------- */
+setInterval(loadData, 10000);
+loadProjects();
 </script>
 
 </body>

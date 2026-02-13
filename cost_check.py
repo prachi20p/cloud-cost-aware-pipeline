@@ -2,15 +2,16 @@ import boto3
 import json
 import psutil
 import random
+import os
+import time
 
-# Pricing API
+# ---------- Setup ----------
+DATA_DIR = "data"
+os.makedirs(DATA_DIR, exist_ok=True)
+
 pricing = boto3.client("pricing", region_name="us-east-1")
 
-# Get AWS regions dynamically
-ec2 = boto3.client("ec2", region_name="us-east-1")
-regions_response = ec2.describe_regions(AllRegions=True)
-
-# Pricing API needs region display names
+# Pricing-compatible regions
 pricing_locations = {
     "us-east-1": "US East (N. Virginia)",
     "us-east-2": "US East (Ohio)",
@@ -20,16 +21,10 @@ pricing_locations = {
     "eu-central-1": "EU (Frankfurt)",
     "ap-south-1": "Asia Pacific (Mumbai)",
     "ap-southeast-1": "Asia Pacific (Singapore)",
-    "ap-northeast-1": "Asia Pacific (Tokyo)",
+    "ap-northeast-1": "Asia Pacific (Tokyo)"
 }
 
-# Keep only supported pricing regions
-regions_map = {
-    r["RegionName"]: pricing_locations[r["RegionName"]]
-    for r in regions_response["Regions"]
-    if r["RegionName"] in pricing_locations
-}
-
+# ---------- Pricing Fetch ----------
 def get_price(region_location):
     try:
         response = pricing.get_products(
@@ -46,25 +41,27 @@ def get_price(region_location):
         terms = next(iter(price_item["terms"]["OnDemand"].values()))
         dims = next(iter(terms["priceDimensions"].values()))
         return float(dims["pricePerUnit"]["USD"])
-    except:
-        return 999  # fallback if region fails
 
-# Fetch prices
-prices = {r: get_price(loc) for r, loc in regions_map.items()}
+    except Exception:
+        return 999  # fallback
 
+prices = {r: get_price(loc) for r, loc in pricing_locations.items()}
+
+# ---------- Monitoring ----------
 cpu = psutil.cpu_percent(interval=1)
 memory = psutil.virtual_memory().percent
 
 # Traffic simulation
 traffic = random.randint(50, 500)
 
+# ---------- Deployment Decision ----------
 current_region = "us-east-1"
 cheapest_region = min(prices, key=prices.get)
 
 current_price = prices[current_region]
 cheapest_price = prices[cheapest_region]
 
-# Load-aware decision
+# Region decision
 if cpu > 70 or traffic > 400:
     best_region = cheapest_region
 else:
@@ -78,7 +75,7 @@ status = (
     else "Running optimally"
 )
 
-# Auto scaling simulation
+# ---------- Auto Scaling ----------
 if cpu > 75 or traffic > 400:
     instances = 4
 elif cpu > 55 or traffic > 250:
@@ -88,25 +85,42 @@ elif cpu > 35:
 else:
     instances = 1
 
+# ---------- Cost Prediction ----------
 monthly_cost = current_price * 24 * 30
 yearly_cost = monthly_cost * 12
 
-data = {
-    "current_region": current_region,
-    "current_price": current_price,
-    "best_region": best_region,
-    "best_price": best_price,
-    "savings": current_price - best_price,
-    "cpu": cpu,
-    "memory": memory,
-    "traffic": traffic,
-    "instances": instances,
-    "status": status,
-    "monthly_cost": monthly_cost,
-    "yearly_cost": yearly_cost,
-}
+# ---------- Multi‑Project Simulation ----------
+projects = ["projectA", "projectB", "projectC"]
 
-with open("data.json", "w") as f:
-    json.dump(data, f)
+for project in projects:
 
-print("Dashboard data updated.")
+    # Slight variation per project
+    proj_cpu = min(100, cpu + random.randint(-10, 10))
+    proj_mem = min(100, memory + random.randint(-10, 10))
+    proj_traffic = max(50, traffic + random.randint(-50, 50))
+
+    data = {
+        "project": project,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "current_region": current_region,
+        "current_price": current_price,
+        "best_region": best_region,
+        "best_price": best_price,
+        "savings": current_price - best_price,
+        "cpu": proj_cpu,
+        "memory": proj_mem,
+        "traffic": proj_traffic,
+        "instances": instances,
+        "status": status,
+        "monthly_cost": monthly_cost,
+        "yearly_cost": yearly_cost,
+    }
+
+    with open(f"{DATA_DIR}/{project}.json", "w") as f:
+        json.dump(data, f, indent=2)
+
+# ---------- Project List ----------
+with open(f"{DATA_DIR}/projects.json", "w") as f:
+    json.dump(projects, f)
+
+print("All project dashboards updated successfully.")

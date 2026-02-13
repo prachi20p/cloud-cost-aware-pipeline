@@ -1,0 +1,15 @@
+{
+  "project": "projectB",
+  "current_region": "us-west-2",
+  "current_price": 0.0122,
+  "best_region": "ap-south-1",
+  "best_price": 0.0104,
+  "savings": 0.0018,
+  "cpu": 67,
+  "memory": 72,
+  "traffic": 380,
+  "instances": 3,
+  "status": "Scaling instances due to load",
+  "monthly_cost": 8.78,
+  "yearly_cost": 105.36
+}

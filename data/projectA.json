@@ -1,0 +1,15 @@
+{
+  "project": "projectA",
+  "current_region": "us-east-1",
+  "current_price": 0.0116,
+  "best_region": "ap-south-1",
+  "best_price": 0.0104,
+  "savings": 0.0012,
+  "cpu": 32,
+  "memory": 58,
+  "traffic": 210,
+  "instances": 2,
+  "status": "Running optimally",
+  "monthly_cost": 8.35,
+  "yearly_cost": 100.2
+}
