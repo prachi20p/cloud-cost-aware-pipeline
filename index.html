@@ -1,30 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cloud Cost-Aware Dashboard</title>
+<title>Cloud Cost-Aware Deployment Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
     font-family: Arial;
-    background: #f4f6f9;
+    background: #eef1f5;
     margin: 20px;
 }
+
+h1 { color: #333; }
+
+.section { margin-bottom: 30px; }
 
 .card {
     background: white;
     padding: 15px;
     margin: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
     display: inline-block;
-    width: 260px;
+    width: 250px;
     vertical-align: top;
+    transition: 0.2s;
 }
 
+.card:hover { transform: scale(1.02); }
+
+.good { border-left: 6px solid #28a745; }
+.warn { border-left: 6px solid #ffc107; }
+.bad  { border-left: 6px solid #dc3545; }
+
 canvas {
-    max-width: 900px;
+    max-width: 950px;
     margin-bottom: 40px;
+}
+
+.instances span {
+    font-size: 24px;
+    margin-right: 4px;
 }
 </style>
 </head>
@@ -36,25 +52,35 @@ canvas {
 <h2>Select Project</h2>
 <select id="projectSelect" onchange="loadData()"></select>
 
+<!-- ---------- Overview ---------- -->
+<div class="section">
+<h2>System Overview</h2>
+
+<div class="card good"><p id="cpu"></p></div>
+<div class="card good"><p id="mem"></p></div>
+<div class="card good"><p id="instances"></p></div>
+<div class="card good"><p id="traffic"></p></div>
+
+</div>
+
+<!-- ---------- Deployment ---------- -->
+<div class="section">
 <h2>Deployment Details</h2>
 
 <div class="card"><p id="region"></p></div>
 <div class="card"><p id="cheapest"></p></div>
 <div class="card"><p id="saving"></p></div>
-<div class="card"><p id="instances"></p></div>
-
-<h2>Server Usage</h2>
-
-<div class="card"><p id="cpu"></p></div>
-<div class="card"><p id="mem"></p></div>
-<div class="card"><p id="traffic"></p></div>
 <div class="card"><p id="status"></p></div>
 
+</div>
+
+<!-- ---------- Comparison ---------- -->
 <h2>Project Comparison</h2>
 <div id="comparison"></div>
 
 <h3 id="totalCost"></h3>
 
+<!-- ---------- Charts ---------- -->
 <h2>CPU Usage Trend</h2>
 <canvas id="cpuChart"></canvas>
 
@@ -64,7 +90,7 @@ canvas {
 <h2>Scaling Trend</h2>
 <canvas id="scaleChart"></canvas>
 
-<h2>CPU History (Analytics)</h2>
+<h2>CPU History Analytics</h2>
 <canvas id="cpuHistory"></canvas>
 
 <script>
@@ -91,7 +117,7 @@ async function loadProjects(){
     loadComparison();
 }
 
-/* ---------- Load Selected Project ---------- */
+/* ---------- Load Data ---------- */
 async function loadData(){
     const project =
         document.getElementById("projectSelect").value;
@@ -99,17 +125,22 @@ async function loadData(){
     const res = await fetch("data/" + project + ".json");
     const data = await res.json();
 
+    /* Deployment info */
     document.getElementById("region").innerText =
         "Current Region: " + data.current_region +
-        " ($" + data.current_price + "/hour)";
+        " ($" + data.current_price + "/hr)";
 
     document.getElementById("cheapest").innerText =
         "Best Region: " + data.best_region +
-        " ($" + data.best_price + "/hour)";
+        " ($" + data.best_price + "/hr)";
 
     document.getElementById("saving").innerText =
-        "Savings: $" + data.savings + "/hour";
+        "Savings: $" + data.savings + "/hr";
 
+    document.getElementById("status").innerText =
+        "Status: " + data.status;
+
+    /* Overview cards */
     document.getElementById("cpu").innerText =
         "CPU Usage: " + data.cpu + "%";
 
@@ -119,34 +150,52 @@ async function loadData(){
     document.getElementById("traffic").innerText =
         "Traffic Load: " + data.traffic;
 
-    document.getElementById("instances").innerText =
-        "Active Instances: " + data.instances;
+    /* Instance icons */
+    let icons = "";
+    for(let i=0;i<data.instances;i++)
+        icons += "🖥️";
 
-    document.getElementById("status").innerText =
-        "Status: " + data.status;
+    document.getElementById("instances").innerHTML =
+        "Instances:<div class='instances'>" + icons + "</div>";
 
-    /* Live CPU chart */
+    /* Status coloring */
+    let cpuCard =
+        document.getElementById("cpu").parentElement;
+
+    cpuCard.classList.remove("good","warn","bad");
+
+    if(data.cpu > 75)
+        cpuCard.classList.add("bad");
+    else if(data.cpu > 55)
+        cpuCard.classList.add("warn");
+    else
+        cpuCard.classList.add("good");
+
+    /* Live CPU graph */
     cpuData.push(data.cpu);
     if(cpuData.length > 20) cpuData.shift();
+
     cpuChart.data.labels = cpuData.map((_,i)=>i);
     cpuChart.data.datasets[0].data = cpuData;
     cpuChart.update();
 
-    /* Live Memory chart */
+    /* Memory graph */
     memData.push(data.memory);
     if(memData.length > 20) memData.shift();
+
     memChart.data.labels = memData.map((_,i)=>i);
     memChart.data.datasets[0].data = memData;
     memChart.update();
 
-    /* Scaling chart */
+    /* Scaling graph */
     scaleData.push(data.instances);
     if(scaleData.length > 20) scaleData.shift();
+
     scaleChart.data.labels = scaleData.map((_,i)=>i);
     scaleChart.data.datasets[0].data = scaleData;
     scaleChart.update();
 
-    /* ---------- Historical CPU ---------- */
+    /* History analytics */
     const histRes =
         await fetch("data/history/" + project + ".json");
 
@@ -163,7 +212,7 @@ async function loadData(){
     historyChart.update();
 }
 
-/* ---------- Comparison Dashboard ---------- */
+/* ---------- Comparison ---------- */
 async function loadComparison(){
     const res = await fetch("data/projects.json");
     const projects = await res.json();
@@ -199,15 +248,7 @@ const cpuChart = new Chart(
     document.getElementById("cpuChart"),
     {
         type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "CPU %",
-                data: [],
-                borderColor: "red",
-                fill: false
-            }]
-        }
+        data: { labels: [], datasets: [{ label: "CPU %", data: [], borderColor: "red" }] }
     }
 );
 
@@ -215,15 +256,7 @@ const memChart = new Chart(
     document.getElementById("memChart"),
     {
         type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Memory %",
-                data: [],
-                borderColor: "blue",
-                fill: false
-            }]
-        }
+        data: { labels: [], datasets: [{ label: "Memory %", data: [], borderColor: "blue" }] }
     }
 );
 
@@ -231,15 +264,7 @@ const scaleChart = new Chart(
     document.getElementById("scaleChart"),
     {
         type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Instances",
-                data: [],
-                borderColor: "green",
-                fill: false
-            }]
-        }
+        data: { labels: [], datasets: [{ label: "Instances", data: [], borderColor: "green" }] }
     }
 );
 
@@ -247,15 +272,7 @@ const historyChart = new Chart(
     document.getElementById("cpuHistory"),
     {
         type: "line",
-        data: {
-            labels: [],
-            datasets: [{
-                label: "CPU History",
-                data: [],
-                borderColor: "purple",
-                fill: false
-            }]
-        }
+        data: { labels: [], datasets: [{ label: "CPU History", data: [], borderColor: "purple" }] }
     }
 );
 
