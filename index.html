@@ -5,109 +5,207 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body { font-family: Arial; background: #eef1f5; margin: 20px; }
-.card {
-    background:white;padding:15px;margin:10px;
-    border-radius:10px;display:inline-block;width:250px;
-    box-shadow:0 3px 8px rgba(0,0,0,0.1);
+body {
+    font-family: Arial;
+    background: #f4f6f9;
+    margin: 20px;
 }
+
+/* Titles */
+h1, h2 {
+    color: #333;
+}
+
+/* Alert */
 .alert {
-    background:#fff3cd;padding:10px;
-    border-left:5px solid #ffc107;
-    margin-bottom:15px;display:none;
+    background: #ffeeba;
+    border-left: 6px solid #ff9800;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    display: none;
 }
-canvas { max-width:900px;margin-bottom:40px; }
+
+/* Cards */
+.container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    margin: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    width: 230px;
+}
+
+/* Charts */
+canvas {
+    max-width: 900px;
+    margin-bottom: 40px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>Cloud Cost-Aware Dashboard</h1>
+<h1>Cloud Cost-Aware Deployment Dashboard</h1>
 
 <div id="alertBox" class="alert"></div>
 
+<h2>Select Project</h2>
 <select id="projectSelect" onchange="loadData()"></select>
 
+<h2>System Overview</h2>
+<div class="container">
 <div class="card"><p id="cpu"></p></div>
-<div class="card"><p id="mem"></p></div>
+<div class="card"><p id="memory"></p></div>
 <div class="card"><p id="instances"></p></div>
 <div class="card"><p id="traffic"></p></div>
+</div>
 
+<h2>Deployment Details</h2>
+<div class="container">
 <div class="card"><p id="region"></p></div>
+<div class="card"><p id="bestRegion"></p></div>
+<div class="card"><p id="saving"></p></div>
 <div class="card"><p id="status"></p></div>
+</div>
 
-<h2>CPU Trend</h2>
+<h2>CPU Usage Trend</h2>
 <canvas id="cpuChart"></canvas>
 
-<h2>Daily Cost Trend</h2>
+<h2>Cost Trend</h2>
 <canvas id="costChart"></canvas>
 
-<h2>Scaling vs Cost</h2>
-<canvas id="scaleCostChart"></canvas>
+<h2>Instance Scaling Trend</h2>
+<canvas id="instanceChart"></canvas>
 
 <script>
-let cpuData=[],costData=[],instData=[];
+let cpuHistory=[];
+let costHistory=[];
+let instHistory=[];
+let prevCost=null;
 
-function alertMsg(msg){
- let box=document.getElementById("alertBox");
- box.innerHTML=msg;box.style.display="block";
+/* ---------- Alerts ---------- */
+function showAlert(msg){
+    const box=document.getElementById("alertBox");
+    box.innerHTML=msg;
+    box.style.display="block";
 }
 
+function clearAlert(){
+    document.getElementById("alertBox").style.display="none";
+}
+
+/* ---------- Load Projects ---------- */
 async function loadProjects(){
- const r=await fetch("data/projects.json");
- const ps=await r.json();
- let s=document.getElementById("projectSelect");
- s.innerHTML="";
- ps.forEach(p=>{
-   let o=document.createElement("option");
-   o.value=p;o.text=p;s.appendChild(o);
- });
- loadData();
+    const res=await fetch("data/projects.json");
+    const projects=await res.json();
+
+    const sel=document.getElementById("projectSelect");
+    sel.innerHTML="";
+
+    projects.forEach(p=>{
+        let o=document.createElement("option");
+        o.value=p;
+        o.text=p;
+        sel.appendChild(o);
+    });
+
+    loadData();
 }
 
+/* ---------- Load Dashboard Data ---------- */
 async function loadData(){
- let p=document.getElementById("projectSelect").value;
- let r=await fetch("data/"+p+".json");
- let d=await r.json();
+    const project=document.getElementById("projectSelect").value;
 
- document.getElementById("cpu").innerText="CPU: "+d.cpu+"%";
- document.getElementById("mem").innerText="Memory: "+d.memory+"%";
- document.getElementById("instances").innerText="Instances: "+d.instances;
- document.getElementById("traffic").innerText="Traffic: "+d.traffic;
- document.getElementById("region").innerText="Region: "+d.current_region;
- document.getElementById("status").innerText=d.status;
+    const res=await fetch("data/"+project+".json");
+    const data=await res.json();
 
- if(d.cpu>80) alertMsg("High CPU detected");
+    document.getElementById("cpu").innerText=
+        "CPU Usage: "+data.cpu+"%";
 
- cpuData.push(d.cpu);
- if(cpuData.length>20) cpuData.shift();
- cpuChart.data.labels=cpuData.map((_,i)=>i);
- cpuChart.data.datasets[0].data=cpuData;
- cpuChart.update();
+    document.getElementById("memory").innerText=
+        "Memory Usage: "+data.memory+"%";
 
- const hr=await fetch("data/history/"+p+".json");
- const hist=await hr.json();
+    document.getElementById("instances").innerText=
+        "Active Instances: "+data.instances;
 
- costData=hist.map(x=>x.cost);
- instData=hist.map(x=>x.instances);
+    document.getElementById("traffic").innerText=
+        "Traffic Load: "+data.traffic;
 
- costChart.data.labels=costData.map((_,i)=>i);
- costChart.data.datasets[0].data=costData;
- costChart.update();
+    document.getElementById("region").innerText=
+        "Current Region: "+data.current_region;
 
- scaleCostChart.data.labels=instData.map((_,i)=>i);
- scaleCostChart.data.datasets[0].data=instData;
- scaleCostChart.update();
+    document.getElementById("bestRegion").innerText=
+        "Best Region: "+data.best_region;
+
+    document.getElementById("saving").innerText=
+        "Savings: $"+data.savings.toFixed(4)+"/hr";
+
+    document.getElementById("status").innerText=
+        "Status: "+data.status;
+
+    /* Alerts */
+    clearAlert();
+
+    if(data.cpu>80)
+        showAlert("High CPU usage detected");
+
+    if(prevCost && data.current_price > prevCost*1.1)
+        showAlert("Cost spike detected");
+
+    if(data.best_region !== data.current_region)
+        showAlert("Migration recommended to cheaper region");
+
+    prevCost=data.current_price;
+
+    /* CPU trend */
+    cpuHistory.push(data.cpu);
+    if(cpuHistory.length>20) cpuHistory.shift();
+
+    cpuChart.data.labels=cpuHistory.map((_,i)=>i);
+    cpuChart.data.datasets[0].data=cpuHistory;
+    cpuChart.update();
+
+    /* History file */
+    const histRes=
+        await fetch("data/history/"+project+".json");
+    const hist=await histRes.json();
+
+    costHistory=hist.map(x=>x.cost);
+    instHistory=hist.map(x=>x.instances);
+
+    costChart.data.labels=costHistory.map((_,i)=>i);
+    costChart.data.datasets[0].data=costHistory;
+    costChart.update();
+
+    instanceChart.data.labels=instHistory.map((_,i)=>i);
+    instanceChart.data.datasets[0].data=instHistory;
+    instanceChart.update();
 }
 
-const cpuChart=new Chart(document.getElementById("cpuChart"),
-{type:"line",data:{labels:[],datasets:[{label:"CPU %",data:[],borderColor:"red"}]}});
+/* ---------- Charts ---------- */
+const cpuChart=new Chart(
+document.getElementById("cpuChart"),
+{type:"line",
+data:{labels:[],
+datasets:[{label:"CPU %",data:[],borderColor:"red"}]}});
 
-const costChart=new Chart(document.getElementById("costChart"),
-{type:"line",data:{labels:[],datasets:[{label:"Cost Trend",data:[],borderColor:"blue"}]}});
+const costChart=new Chart(
+document.getElementById("costChart"),
+{type:"line",
+data:{labels:[],
+datasets:[{label:"Cost Trend",data:[],borderColor:"blue"}]}});
 
-const scaleCostChart=new Chart(document.getElementById("scaleCostChart"),
-{type:"line",data:{labels:[],datasets:[{label:"Instances",data:[],borderColor:"green"}]}});
+const instanceChart=new Chart(
+document.getElementById("instanceChart"),
+{type:"line",
+data:{labels:[],
+datasets:[{label:"Instances",data:[],borderColor:"green"}]}});
 
 setInterval(loadData,10000);
 loadProjects();
