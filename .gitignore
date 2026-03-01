@@ -1,1 +1,22 @@
+# Mac
+.DS_Store
 
+# Python
+__pycache__/
+venv/
+*.pyc
+
+# Node
+node_modules/
+
+# Env files
+.env
+
+# Logs
+*.log
+
+# Database
+users.db
+
+# Temporary
+tempCodeRunnerFile.py
