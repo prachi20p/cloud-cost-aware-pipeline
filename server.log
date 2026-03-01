@@ -1,0 +1,14 @@
+[dotenv@17.3.1] injecting env (6) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+Better Auth Server listening on http://127.0.0.1:5001
+[2m2026-02-28T05:09:01.199Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Warning: your BETTER_AUTH_SECRET should be at least 32 characters long for adequate security. Generate one with `npx @better-auth/cli secret` or `openssl rand -base64 32`.
+[2m2026-02-28T05:09:01.200Z[0m [33mWARN[0m [1m[Better Auth]:[0m [better-auth] Warning: your BETTER_AUTH_SECRET appears low-entropy. Use a randomly generated secret for production.
+Failed to fetch GitHub repos: SqliteError: no such column: provider
+    at Database.prepare (/Users/prachipatel/Desktop/cloud-project/cloud-cost-aware-pipeline/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21)
+    at file:///Users/prachipatel/Desktop/cloud-project/cloud-cost-aware-pipeline/server.js:35:28 {
+  code: 'SQLITE_ERROR'
+}
+Failed to fetch GitHub repos: SqliteError: no such column: provider
+    at Database.prepare (/Users/prachipatel/Desktop/cloud-project/cloud-cost-aware-pipeline/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21)
+    at file:///Users/prachipatel/Desktop/cloud-project/cloud-cost-aware-pipeline/server.js:35:28 {
+  code: 'SQLITE_ERROR'
+}
